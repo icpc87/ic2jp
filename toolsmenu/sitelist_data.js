@@ -1,4 +1,4 @@
-﻿// サイト一覧データ-
+// サイト一覧データ
 // このファイルを編集してサーバーにアップロードすることで、全ての利用者のリストが更新されます。
 window.siteListData = [
   {
@@ -47,11 +47,6 @@ window.siteListData = [
     "newTab": true
   },
   {
-    "name": "変換サイト",
-    "url": "/henkan/",
-    "newTab": false
-  },
-  {
     "name": "TOOLS編集",
     "url": "/settings/",
     "newTab": true
@@ -62,5 +57,3 @@ window.siteListData = [
     "newTab": true
   }
 ];
-
-
