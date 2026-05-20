@@ -8,6 +8,7 @@ CompositionManager::CompositionManager(ITfThreadMgr* pThreadMgr,
     , m_clientId(clientId)
     , m_pComposition(nullptr)
     , m_cRef(1)
+    , m_mozc(std::make_unique<MozcClientStub>())
 {
 }
 
@@ -32,7 +33,9 @@ STDMETHODIMP CompositionManager::OnCompositionTerminated(
         m_pComposition->Release();
         m_pComposition = nullptr;
     }
-    m_preedit.clear();
+    m_hiragana.clear();
+    m_romaji.Reset();
+    m_mozc->Reset();
     return S_OK;
 }
 
@@ -75,7 +78,7 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
 
     if (wParam == VK_RETURN)
     {
-        if (!m_preedit.empty())
+        if (!m_hiragana.empty() || !m_romaji.Pending().empty())
         {
             CommitComposition(pContext);
             *pfEaten = TRUE;
@@ -85,7 +88,7 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
 
     if (wParam == VK_ESCAPE)
     {
-        if (!m_preedit.empty())
+        if (!m_hiragana.empty() || !m_romaji.Pending().empty())
         {
             CancelComposition(pContext);
             *pfEaten = TRUE;
@@ -95,27 +98,57 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
 
     if (wParam == VK_BACK)
     {
-        if (!m_preedit.empty())
+        if (!m_romaji.Pending().empty())
         {
-            m_preedit.pop_back();
-            if (m_preedit.empty())
+            // First backspace drains the romaji buffer before touching hiragana
+            std::wstring pending = m_romaji.Pending();
+            pending.pop_back();
+            m_romaji.Reset();
+            // Re-feed all but the last char
+            for (wchar_t c : pending) m_romaji.Feed(c);
+            _RefreshComposition(pContext);
+            *pfEaten = TRUE;
+        }
+        else if (!m_hiragana.empty())
+        {
+            m_hiragana.pop_back();
+            if (m_hiragana.empty())
                 CancelComposition(pContext);
             else
-                UpdateComposition(pContext, ConvertWithMozc(m_preedit));
+                _RefreshComposition(pContext);
             *pfEaten = TRUE;
+        }
+        return S_OK;
+    }
+
+    // Tab / Shift+Tab: cycle candidates
+    if (wParam == VK_TAB)
+    {
+        if (!m_hiragana.empty())
+        {
+            bool shifted = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+            auto result  = shifted ? m_mozc->SelectPrev() : m_mozc->SelectNext();
+            if (!result.candidates.empty())
+            {
+                UpdateComposition(pContext, result.candidates[result.focused].value);
+                *pfEaten = TRUE;
+            }
         }
         return S_OK;
     }
 
     if (wParam >= 'A' && wParam <= 'Z')
     {
-        // Shift state: if Shift is held, keep uppercase for roman input
         bool shifted = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         bool caps    = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
         bool upper   = shifted ^ caps;
         wchar_t ch   = static_cast<wchar_t>(upper ? wParam : wParam + (L'a' - L'A'));
-        m_preedit += ch;
-        UpdateComposition(pContext, ConvertWithMozc(m_preedit));
+
+        // Feed into roman converter; accumulate resulting hiragana
+        std::wstring kana = m_romaji.Feed(ch);
+        m_hiragana += kana;
+
+        _RefreshComposition(pContext);
         *pfEaten = TRUE;
         return S_OK;
     }
@@ -224,16 +257,35 @@ HRESULT CompositionManager::ApplyDisplayAttribute(ITfContext*  pContext,
     return hr;
 }
 
+// Convenience: run Mozc on current hiragana + pending romaji and repaint.
+HRESULT CompositionManager::_RefreshComposition(ITfContext* pContext)
+{
+    // Display = Mozc top candidate (or hiragana if no conversion yet)
+    std::wstring display = m_hiragana + m_romaji.Pending();
+    if (!m_hiragana.empty())
+    {
+        auto result = m_mozc->Convert(m_hiragana);
+        if (!result.candidates.empty())
+            display = result.candidates[result.focused].value
+                      + m_romaji.Pending();
+    }
+    return UpdateComposition(pContext, display);
+}
+
 // Open a READWRITE session to commit and end the composition.
 HRESULT CompositionManager::CommitComposition(ITfContext* pContext)
 {
+    // Flush any unfinished romaji into hiragana first
+    m_hiragana += m_romaji.Flush();
+
     if (!m_pComposition)
     {
-        m_preedit.clear();
+        m_hiragana.clear();
+        m_mozc->Reset();
         return S_OK;
     }
 
-    std::wstring final = ConvertWithMozc(m_preedit);
+    std::wstring final = m_mozc->Commit();
 
     HRESULT hr = EditSession::Run(pContext, m_clientId,
         TF_ES_READWRITE | TF_ES_SYNC,
@@ -257,7 +309,9 @@ HRESULT CompositionManager::CommitComposition(ITfContext* pContext)
             return hr2;
         });
 
-    m_preedit.clear();
+    m_hiragana.clear();
+    m_romaji.Reset();
+    m_mozc->Reset();
     return hr;
 }
 
@@ -288,19 +342,8 @@ HRESULT CompositionManager::CancelComposition(ITfContext* pContext)
             return S_OK;
         });
 
-    m_preedit.clear();
+    m_hiragana.clear();
+    m_romaji.Reset();
+    m_mozc->Reset();
     return hr;
-}
-
-// ─── Mozc stub ───────────────────────────────────────────────────────────────
-// Replace this with a real mozc::SessionInterface call:
-//   mozc::commands::Input  input;
-//   mozc::commands::Output output;
-//   input.set_type(mozc::commands::Input::SEND_KEY);
-//   input.mutable_key()->set_key_string(preedit);
-//   session_->SendCommand(input, &output);
-//   return output.preedit().segment(0).value();  // top candidate
-std::wstring CompositionManager::ConvertWithMozc(const std::wstring& preedit)
-{
-    return preedit;  // passthrough until Mozc is linked
 }
