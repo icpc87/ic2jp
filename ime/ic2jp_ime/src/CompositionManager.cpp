@@ -1,21 +1,67 @@
 #include "CompositionManager.h"
+#include "EditSession.h"
+#include "DisplayAttribute.h"
 
-CompositionManager::CompositionManager(ITfThreadMgr* pThreadMgr, TfClientId clientId)
+CompositionManager::CompositionManager(ITfThreadMgr* pThreadMgr,
+                                        TfClientId    clientId)
     : m_pThreadMgr(pThreadMgr)
     , m_clientId(clientId)
     , m_pComposition(nullptr)
+    , m_cRef(1)
 {
 }
 
 CompositionManager::~CompositionManager()
 {
-    // Deactivate should have ended the composition, but guard here.
     if (m_pComposition)
     {
         m_pComposition->EndComposition(nullptr);
         m_pComposition->Release();
         m_pComposition = nullptr;
     }
+}
+
+// ─── ITfCompositionSink ──────────────────────────────────────────────────────
+
+STDMETHODIMP CompositionManager::OnCompositionTerminated(
+    TfEditCookie /*ecWrite*/, ITfComposition* /*pComposition*/)
+{
+    // TSF ended the composition externally (e.g. focus change).
+    if (m_pComposition)
+    {
+        m_pComposition->Release();
+        m_pComposition = nullptr;
+    }
+    m_preedit.clear();
+    return S_OK;
+}
+
+// ─── IUnknown ────────────────────────────────────────────────────────────────
+
+STDMETHODIMP CompositionManager::QueryInterface(REFIID riid, void** ppv)
+{
+    if (!ppv) return E_INVALIDARG;
+    *ppv = nullptr;
+
+    if (IsEqualIID(riid, IID_IUnknown) ||
+        IsEqualIID(riid, IID_ITfCompositionSink))
+    {
+        *ppv = static_cast<ITfCompositionSink*>(this);
+        AddRef();
+        return S_OK;
+    }
+    return E_NOINTERFACE;
+}
+
+STDMETHODIMP_(ULONG) CompositionManager::AddRef()
+{
+    return InterlockedIncrement(&m_cRef);
+}
+
+STDMETHODIMP_(ULONG) CompositionManager::Release()
+{
+    return InterlockedDecrement(&m_cRef);
+    // Not heap-allocated via COM; owned by ImeCore via unique_ptr.
 }
 
 // ─── Public ──────────────────────────────────────────────────────────────────
@@ -27,7 +73,6 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
 {
     *pfEaten = FALSE;
 
-    // Commit on Enter
     if (wParam == VK_RETURN)
     {
         if (!m_preedit.empty())
@@ -38,7 +83,6 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
         return S_OK;
     }
 
-    // Cancel on Escape
     if (wParam == VK_ESCAPE)
     {
         if (!m_preedit.empty())
@@ -49,7 +93,6 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
         return S_OK;
     }
 
-    // Backspace erases one preedit character
     if (wParam == VK_BACK)
     {
         if (!m_preedit.empty())
@@ -58,18 +101,21 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
             if (m_preedit.empty())
                 CancelComposition(pContext);
             else
-                UpdateComposition(pContext, m_preedit);
+                UpdateComposition(pContext, ConvertWithMozc(m_preedit));
             *pfEaten = TRUE;
         }
         return S_OK;
     }
 
-    // Accept A-Z as roman-kana input (shift/caps handling omitted for now)
     if (wParam >= 'A' && wParam <= 'Z')
     {
-        wchar_t ch = static_cast<wchar_t>(wParam + (L'a' - L'A'));
+        // Shift state: if Shift is held, keep uppercase for roman input
+        bool shifted = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        bool caps    = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+        bool upper   = shifted ^ caps;
+        wchar_t ch   = static_cast<wchar_t>(upper ? wParam : wParam + (L'a' - L'A'));
         m_preedit += ch;
-        UpdateComposition(pContext, m_preedit);
+        UpdateComposition(pContext, ConvertWithMozc(m_preedit));
         *pfEaten = TRUE;
         return S_OK;
     }
@@ -79,69 +125,182 @@ HRESULT CompositionManager::HandleKeyDown(ITfContext* pContext,
 
 // ─── Private ─────────────────────────────────────────────────────────────────
 
-HRESULT CompositionManager::StartComposition(ITfContext* pContext)
+// Called from inside a READWRITE edit session to open the composition.
+HRESULT CompositionManager::StartComposition(ITfContext* pContext,
+                                              TfEditCookie ec)
 {
-    if (m_pComposition)
-        return S_OK;
+    if (m_pComposition) return S_OK;
 
-    // Full implementation requires an ITfEditSession subclass.
-    // Inside the edit session:
-    //   1. Obtain ITfInsertAtSelection from pContext
-    //   2. Call InsertTextAtSelection to get an anchor range
-    //   3. Call ITfContextComposition::StartComposition with that range
-    //   4. Store the returned ITfComposition* in m_pComposition
-    //
-    // Placeholder: structure is correct, body is a TODO stub.
-    (void)pContext;
-    return S_OK;
-}
-
-HRESULT CompositionManager::UpdateComposition(ITfContext* pContext,
-                                               const std::wstring& preedit)
-{
-    HRESULT hr = StartComposition(pContext);
+    // Step 1: Insert empty text at caret to get an anchor range.
+    ITfInsertAtSelection* pInsert = nullptr;
+    HRESULT hr = pContext->QueryInterface(IID_ITfInsertAtSelection,
+                                          reinterpret_cast<void**>(&pInsert));
     if (FAILED(hr)) return hr;
 
-    // Live conversion pipeline (to be wired to Mozc):
-    //   1. Open a TF_ES_READWRITE edit session
-    //   2. Call m_pComposition->GetRange to get the current range
-    //   3. Pass m_preedit to Mozc session → get top candidate as m_converted
-    //   4. Call ITfRange::SetText(nullptr, 0, m_converted.c_str(), len)
-    //   5. Apply ITfProperty display attributes:
-    //        - unconverted segments: TF_ATTR_INPUT (underline)
-    //        - focused segment:      TF_ATTR_TARGET_CONVERTED (bold/highlight)
-    //        - confirmed segments:   TF_ATTR_CONVERTED
-    //
-    // Placeholder: store string locally until edit-session plumbing is added.
-    m_converted = preedit;
-    (void)pContext;
-    return S_OK;
+    ITfRange* pRangeInsert = nullptr;
+    hr = pInsert->InsertTextAtSelection(ec, TF_IAS_QUERYONLY,
+                                         nullptr, 0, &pRangeInsert);
+    pInsert->Release();
+    if (FAILED(hr)) return hr;
+
+    // Step 2: Start the composition on that range.
+    ITfContextComposition* pCtxComp = nullptr;
+    hr = pContext->QueryInterface(IID_ITfContextComposition,
+                                   reinterpret_cast<void**>(&pCtxComp));
+    if (SUCCEEDED(hr))
+    {
+        hr = pCtxComp->StartComposition(ec, pRangeInsert,
+                                         static_cast<ITfCompositionSink*>(this),
+                                         &m_pComposition);
+        pCtxComp->Release();
+    }
+    pRangeInsert->Release();
+    return hr;
 }
 
-HRESULT CompositionManager::CommitComposition(ITfContext* /*pContext*/)
+// Open a READWRITE edit session to insert/update the composition string.
+HRESULT CompositionManager::UpdateComposition(ITfContext*         pContext,
+                                               const std::wstring& converted)
 {
-    if (m_pComposition)
-    {
-        // TODO (inside edit session): SetText to m_converted before ending
-        m_pComposition->EndComposition(nullptr);
-        m_pComposition->Release();
-        m_pComposition = nullptr;
-    }
-    m_preedit.clear();
-    m_converted.clear();
-    return S_OK;
+    // Capture by value so the lambda owns the string across the async callback.
+    std::wstring text = converted;
+
+    return EditSession::Run(pContext, m_clientId,
+        TF_ES_READWRITE | TF_ES_SYNC,
+        [this, &text, pContext](ITfEditSession*, TfEditCookie ec) -> HRESULT
+        {
+            HRESULT hr = StartComposition(pContext, ec);
+            if (FAILED(hr) || !m_pComposition) return hr;
+
+            // Get the range that covers the current composition string.
+            ITfRange* pRange = nullptr;
+            hr = m_pComposition->GetRange(&pRange);
+            if (FAILED(hr)) return hr;
+
+            // Overwrite the entire composition range with the converted text.
+            hr = pRange->SetText(ec, TF_ST_CORRECTION,
+                                  text.c_str(),
+                                  static_cast<LONG>(text.size()));
+            if (SUCCEEDED(hr))
+                ApplyDisplayAttribute(pContext, ec, pRange, GUID_ATTR_INPUT);
+
+            pRange->Release();
+            return hr;
+        });
 }
 
-HRESULT CompositionManager::CancelComposition(ITfContext* /*pContext*/)
+// Apply a display attribute (underline / highlight) to a range via ITfProperty.
+HRESULT CompositionManager::ApplyDisplayAttribute(ITfContext*  pContext,
+                                                   TfEditCookie ec,
+                                                   ITfRange*    pRange,
+                                                   REFGUID      guidAttr)
 {
-    if (m_pComposition)
+    ITfProperty* pProp = nullptr;
+    HRESULT hr = pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pProp);
+    if (FAILED(hr)) return hr;
+
+    // The property value is a VT_I4 holding the atom for the attribute GUID.
+    // TSF resolves the atom → TF_DISPLAYATTRIBUTE via ITfDisplayAttributeMgr.
+    TfGuidAtom atom = TF_INVALID_GUIDATOM;
+    ITfCategoryMgr* pCategoryMgr = nullptr;
+    hr = CoCreateInstance(CLSID_TF_CategoryMgr, nullptr, CLSCTX_INPROC_SERVER,
+                           IID_ITfCategoryMgr,
+                           reinterpret_cast<void**>(&pCategoryMgr));
+    if (SUCCEEDED(hr))
     {
-        // TODO (inside edit session): clear text before ending
-        m_pComposition->EndComposition(nullptr);
-        m_pComposition->Release();
-        m_pComposition = nullptr;
+        hr = pCategoryMgr->RegisterGUID(guidAttr, &atom);
+        pCategoryMgr->Release();
     }
+
+    if (SUCCEEDED(hr) && atom != TF_INVALID_GUIDATOM)
+    {
+        VARIANT var;
+        var.vt   = VT_I4;
+        var.lVal = static_cast<LONG>(atom);
+        hr = pProp->SetValue(ec, pRange, &var);
+    }
+
+    pProp->Release();
+    return hr;
+}
+
+// Open a READWRITE session to commit and end the composition.
+HRESULT CompositionManager::CommitComposition(ITfContext* pContext)
+{
+    if (!m_pComposition)
+    {
+        m_preedit.clear();
+        return S_OK;
+    }
+
+    std::wstring final = ConvertWithMozc(m_preedit);
+
+    HRESULT hr = EditSession::Run(pContext, m_clientId,
+        TF_ES_READWRITE | TF_ES_SYNC,
+        [this, &final](ITfEditSession*, TfEditCookie ec) -> HRESULT
+        {
+            if (!m_pComposition) return S_OK;
+
+            ITfRange* pRange = nullptr;
+            HRESULT hr2 = m_pComposition->GetRange(&pRange);
+            if (SUCCEEDED(hr2))
+            {
+                // Write final committed text (no display attribute = plain text).
+                hr2 = pRange->SetText(ec, TF_ST_CORRECTION,
+                                       final.c_str(),
+                                       static_cast<LONG>(final.size()));
+                pRange->Release();
+            }
+            m_pComposition->EndComposition(ec);
+            m_pComposition->Release();
+            m_pComposition = nullptr;
+            return hr2;
+        });
+
     m_preedit.clear();
-    m_converted.clear();
-    return S_OK;
+    return hr;
+}
+
+// Cancel: clear the composition range and end without inserting text.
+HRESULT CompositionManager::CancelComposition(ITfContext* pContext)
+{
+    if (!m_pComposition)
+    {
+        m_preedit.clear();
+        return S_OK;
+    }
+
+    HRESULT hr = EditSession::Run(pContext, m_clientId,
+        TF_ES_READWRITE | TF_ES_SYNC,
+        [this](ITfEditSession*, TfEditCookie ec) -> HRESULT
+        {
+            if (!m_pComposition) return S_OK;
+
+            ITfRange* pRange = nullptr;
+            if (SUCCEEDED(m_pComposition->GetRange(&pRange)))
+            {
+                pRange->SetText(ec, TF_ST_CORRECTION, L"", 0);
+                pRange->Release();
+            }
+            m_pComposition->EndComposition(ec);
+            m_pComposition->Release();
+            m_pComposition = nullptr;
+            return S_OK;
+        });
+
+    m_preedit.clear();
+    return hr;
+}
+
+// ─── Mozc stub ───────────────────────────────────────────────────────────────
+// Replace this with a real mozc::SessionInterface call:
+//   mozc::commands::Input  input;
+//   mozc::commands::Output output;
+//   input.set_type(mozc::commands::Input::SEND_KEY);
+//   input.mutable_key()->set_key_string(preedit);
+//   session_->SendCommand(input, &output);
+//   return output.preedit().segment(0).value();  // top candidate
+std::wstring CompositionManager::ConvertWithMozc(const std::wstring& preedit)
+{
+    return preedit;  // passthrough until Mozc is linked
 }

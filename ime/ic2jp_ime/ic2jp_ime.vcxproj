@@ -110,11 +110,15 @@
     <ClCompile Include="src\ImeCore.cpp" />
     <ClCompile Include="src\KeyEventSink.cpp" />
     <ClCompile Include="src\CompositionManager.cpp" />
+    <ClCompile Include="src\EditSession.cpp" />
+    <ClCompile Include="src\DisplayAttribute.cpp" />
     <ClCompile Include="src\Register.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ClassFactory.h" />
     <ClInclude Include="src\CompositionManager.h" />
+    <ClInclude Include="src\DisplayAttribute.h" />
+    <ClInclude Include="src\EditSession.h" />
     <ClInclude Include="src\Globals.h" />
     <ClInclude Include="src\ImeCore.h" />
     <ClInclude Include="src\Register.h" />
