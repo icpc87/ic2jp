@@ -2,6 +2,7 @@
 #include "Globals.h"
 #include "RomajiConverter.h"
 #include "MozcClient.h"
+#include "CandidateWindow.h"
 #include <string>
 #include <memory>
 
@@ -49,7 +50,8 @@ private:
     ITfComposition* m_pComposition;  // non-null while a composition is open
     ULONG           m_cRef;
 
-    RomajiConverter              m_romaji;   // roman → hiragana
-    std::unique_ptr<IMozcConverter> m_mozc;  // hiragana → kanji
-    std::wstring    m_hiragana;              // current hiragana preedit
+    RomajiConverter                 m_romaji;
+    std::unique_ptr<IMozcConverter> m_mozc;
+    std::unique_ptr<CandidateWindow> m_candidateWnd;
+    std::wstring    m_hiragana;
 };

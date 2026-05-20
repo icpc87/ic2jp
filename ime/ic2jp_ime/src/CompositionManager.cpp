@@ -9,7 +9,9 @@ CompositionManager::CompositionManager(ITfThreadMgr* pThreadMgr,
     , m_pComposition(nullptr)
     , m_cRef(1)
     , m_mozc(std::make_unique<MozcClientStub>())
+    , m_candidateWnd(std::make_unique<CandidateWindow>())
 {
+    m_candidateWnd->Create(g_hInst);
 }
 
 CompositionManager::~CompositionManager()
@@ -257,18 +259,44 @@ HRESULT CompositionManager::ApplyDisplayAttribute(ITfContext*  pContext,
     return hr;
 }
 
-// Convenience: run Mozc on current hiragana + pending romaji and repaint.
+// Run Mozc on current hiragana, update composition text, refresh candidate window.
 HRESULT CompositionManager::_RefreshComposition(ITfContext* pContext)
 {
-    // Display = Mozc top candidate (or hiragana if no conversion yet)
     std::wstring display = m_hiragana + m_romaji.Pending();
+    std::vector<std::wstring> candidateTexts;
+    int focused = 0;
+
     if (!m_hiragana.empty())
     {
         auto result = m_mozc->Convert(m_hiragana);
+        focused = result.focused;
+        for (auto& c : result.candidates)
+            candidateTexts.push_back(c.value);
         if (!result.candidates.empty())
             display = result.candidates[result.focused].value
                       + m_romaji.Pending();
     }
+
+    // Update candidate window
+    if (m_candidateWnd)
+    {
+        m_candidateWnd->Update(candidateTexts, focused);
+        if (!candidateTexts.empty())
+        {
+            // Get caret screen position via GetCaretPos (approximate).
+            // For precise positioning use ITfContextView::GetTextExt
+            // inside an edit session on the composition range.
+            POINT pt = {};
+            GetCaretPos(&pt);
+            ClientToScreen(GetFocus(), &pt);
+            m_candidateWnd->Show(pt);
+        }
+        else
+        {
+            m_candidateWnd->Hide();
+        }
+    }
+
     return UpdateComposition(pContext, display);
 }
 
@@ -309,6 +337,7 @@ HRESULT CompositionManager::CommitComposition(ITfContext* pContext)
             return hr2;
         });
 
+    if (m_candidateWnd) m_candidateWnd->Hide();
     m_hiragana.clear();
     m_romaji.Reset();
     m_mozc->Reset();
@@ -342,6 +371,7 @@ HRESULT CompositionManager::CancelComposition(ITfContext* pContext)
             return S_OK;
         });
 
+    if (m_candidateWnd) m_candidateWnd->Hide();
     m_hiragana.clear();
     m_romaji.Reset();
     m_mozc->Reset();

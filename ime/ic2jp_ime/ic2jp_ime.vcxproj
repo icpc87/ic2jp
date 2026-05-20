@@ -114,6 +114,8 @@
     <ClCompile Include="src\DisplayAttribute.cpp" />
     <ClCompile Include="src\RomajiConverter.cpp" />
     <ClCompile Include="src\MozcClient.cpp" />
+    <ClCompile Include="src\CandidateWindow.cpp" />
+    <ClCompile Include="src\DisplayAttributeProvider.cpp" />
     <ClCompile Include="src\Register.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -123,6 +125,8 @@
     <ClInclude Include="src\EditSession.h" />
     <ClInclude Include="src\RomajiConverter.h" />
     <ClInclude Include="src\MozcClient.h" />
+    <ClInclude Include="src\CandidateWindow.h" />
+    <ClInclude Include="src\DisplayAttributeProvider.h" />
     <ClInclude Include="src\Globals.h" />
     <ClInclude Include="src\ImeCore.h" />
     <ClInclude Include="src\Register.h" />

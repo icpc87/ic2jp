@@ -34,6 +34,10 @@ STDMETHODIMP ImeCore::QueryInterface(REFIID riid, void** ppv)
     {
         *ppv = static_cast<ITfKeyEventSink*>(this);
     }
+    else if (IsEqualIID(riid, IID_ITfDisplayAttributeProvider))
+    {
+        *ppv = static_cast<ITfDisplayAttributeProvider*>(this);
+    }
     else
     {
         return E_NOINTERFACE;
@@ -163,11 +167,17 @@ HRESULT ImeCore::DoActivate(ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
 
     m_pCompositionMgr =
         std::make_unique<CompositionManager>(m_pThreadMgr, m_tfClientId);
+
+    // Register display attribute provider and category.
+    m_pAttrProvider = std::make_unique<DisplayAttributeProvider>();
+    DisplayAttributeProvider::Register(m_tfClientId, CLSID_IC2JP_IME);
     return S_OK;
 }
 
 HRESULT ImeCore::DoDeactivate()
 {
+    DisplayAttributeProvider::Unregister(m_tfClientId, CLSID_IC2JP_IME);
+    m_pAttrProvider.reset();
     m_pCompositionMgr.reset();
 
     if (m_pThreadMgr && m_tfClientId != TF_CLIENTID_NULL)
@@ -188,4 +198,22 @@ HRESULT ImeCore::DoDeactivate()
     }
     m_tfClientId = TF_CLIENTID_NULL;
     return S_OK;
+}
+
+// ─── ITfDisplayAttributeProvider ─────────────────────────────────────────────
+
+STDMETHODIMP ImeCore::EnumDisplayAttributeInfo(
+    IEnumTfDisplayAttributeInfo** ppEnum)
+{
+    if (m_pAttrProvider)
+        return m_pAttrProvider->EnumDisplayAttributeInfo(ppEnum);
+    return E_FAIL;
+}
+
+STDMETHODIMP ImeCore::GetDisplayAttributeInfo(
+    REFGUID guid, ITfDisplayAttributeInfo** ppInfo, TfGuidAtom* pGuidAtom)
+{
+    if (m_pAttrProvider)
+        return m_pAttrProvider->GetDisplayAttributeInfo(guid, ppInfo, pGuidAtom);
+    return E_FAIL;
 }

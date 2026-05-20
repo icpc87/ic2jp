@@ -1,5 +1,6 @@
 #pragma once
 #include "Globals.h"
+#include "DisplayAttributeProvider.h"
 #include <memory>
 
 class CompositionManager;
@@ -8,15 +9,16 @@ class CompositionManager;
 //
 // Interface map:
 //   IUnknown
-//   ITfTextInputProcessor      — legacy activation path (delegates to ActivateEx)
-//   ITfTextInputProcessorEx    — preferred activation; receives TF_TMAE_* flags
-//   ITfKeyEventSink            — advised to ITfKeystrokeMgr on Activate,
-//                                unadvised on Deactivate
+//   ITfTextInputProcessor         — legacy activation (delegates to ActivateEx)
+//   ITfTextInputProcessorEx       — preferred activation
+//   ITfKeyEventSink               — advised on Activate, unadvised on Deactivate
+//   ITfDisplayAttributeProvider   — supplies underline/highlight attributes
 //
 // Threading: TSF calls all methods on the UI thread (apartment-threaded COM).
 class ImeCore
     : public ITfTextInputProcessorEx
     , public ITfKeyEventSink
+    , public ITfDisplayAttributeProvider
 {
 public:
     ImeCore();
@@ -47,14 +49,22 @@ public:
     STDMETHOD(OnPreservedKey)(ITfContext* pContext,
                               REFGUID rguid, BOOL* pfEaten) override;
 
+    // ITfDisplayAttributeProvider
+    STDMETHOD(EnumDisplayAttributeInfo)(IEnumTfDisplayAttributeInfo** ppEnum) override;
+    STDMETHOD(GetDisplayAttributeInfo)(REFGUID guid,
+                                       ITfDisplayAttributeInfo** ppInfo,
+                                       TfGuidAtom* pGuidAtom) override;
+
 private:
     ~ImeCore();
 
     HRESULT DoActivate(ITfThreadMgr* pThreadMgr, TfClientId tfClientId);
     HRESULT DoDeactivate();
 
-    ULONG       m_cRef;
+    ULONG         m_cRef;
     ITfThreadMgr* m_pThreadMgr;
     TfClientId    m_tfClientId;
-    std::unique_ptr<CompositionManager> m_pCompositionMgr;
+
+    std::unique_ptr<CompositionManager>      m_pCompositionMgr;
+    std::unique_ptr<DisplayAttributeProvider> m_pAttrProvider;
 };
