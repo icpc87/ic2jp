@@ -2,7 +2,7 @@
 // このファイルを編集してサーバーにアップロードすることで、全ての利用者のリストが更新されます。
 window.siteListData = [
   {
-    "name": "チャプタ作成",
+    "name": "番組サイト目次作成",
     "url": "/chapter/",
     "newTab": false
   },
