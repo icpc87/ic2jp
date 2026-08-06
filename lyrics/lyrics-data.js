@@ -745,6 +745,24 @@ const lyricsData = {
                     "title": "今ここで",
                     "author": "Marre",
                     "lyrics": "この鏡の向こうに\nぼやけた未来がある\nただ俺の足音を\n静かにきいている\n終わりのない道\n\nまっすぐに伸びて\n刹那に俺を呼ぶ\nもう二度と 虚構には\n戻ってこないさ\n\n永遠End\n壊れかけの世界で\n目を開いていろ\n混線回路に\n振り回されて生きるなんて\n猶予はない\n\nとるかとられるか\n賽は投げられた\n気づけ\n今がお前のときだ\n今ここで\n\nこの滅びへの道を\n騙されどこまでいく\nまだ未練があるのか\nこのまま終わらせるな\n\n命の道へと\n導く光が\n刹那にお前を呼ぶ\nもうこんな虚構には\nいなくていいのさ\n\n一点微塵も\nやましいことないように\n刃を突き刺せ\n嗟嘆に縛られ\n振り回されて生きるなんて\n猶予はない\n\nとるかとられるか\n賽は投げられた\n気づけ\n今がお前のときだ\n今ここで\n\n一点微塵も\nやましいことないように\n刃を突き刺せ\n嗟嘆に縛られ\n振り回されて生きるなんて\n猶予はない\n\nとるかとられるか\n賽は投げられた\n気づけ\n今がお前のときだ\n今ここで"
+                },
+                {
+                    "track": "17",
+                    "title": "Get Up",
+                    "author": "Marre",
+                    "lyrics": "Father, the highest God\nwho reigns above all in glory.\n\nJesus, who paid the price,\nthe greatest story.\n\nSpirit, the holy fire\nraising up the dead in power.\n\nGet up,\nnow let the sound of praise arise.\n\nHallelujah Hallelujah\nHallelujah Hallelujah\n\nFather, the highest God\nwho reigns above all in glory.\n\nJesus, who paid the price,\nthe greatest story.\n\nSpirit, the holy fire\nraising up the dead in power.\n\nGet up,\nnow let the sound of praise arise.\n\nHallelujah Hallelujah\nHallelujah Hallelujah\nHallelujah Hallelujah\nHallelujah Hallelujah\n\nI just want to thank you Lord\n\nHallelujah Hallelujah\nHallelujah Hallelujah\n\nI just want to thank you Lord"
+                },
+                {
+                    "track": "18",
+                    "title": "祭りを守れラップ",
+                    "author": "",
+                    "lyrics": "歴史から 何を学ぶ？\n過去はお前に 何を叫ぶ？\n\n国は嘘をつく 大本営発表\nそれが教訓 権力の思想\n負けても勝ったと言い続け\n昨日の嘘が 今日の正義？\n\nみんなで万歳！ 死んでも万歳！\n空気が作る 同調圧力！\n\n逆らう奴らは 「非国民！」\nマスクをつけなきゃ 「人殺し！」\n\nきゅーじゅーきゅーてん\nきゅーぱーせんと！\n\n生き残るなら 何が恐怖？\nだけどテレビは 恐怖を演出！\n御用学者も 不安を増幅！\n\nステイホーム！\nソーシャルディスタンス！\nノーマル消えた 異常がスタンダード！\n\n違う意見なら 即キャンセル！\n「黙って従え！」\nそれがルール！\nそれがルール！\n\nお祭り騒ぎの 集団接種！\n六十三人の 集団訴訟！\n戦後最大の 薬害問題！\n新型ワクチン それでも推奨！\n\n今も続く 苦しみと涙\nだけど世間は サッカーの話題\nゴール！ ゴール！ みんな熱狂！\n祭りだ！ 祭りだ！ 大騒ぎ！\n\nだけど ほんとの祭りは\nそんなんじゃねえ！\nおんなじ歴史を くりかえさせねえ！\n空気に流され 踊らされねえ！\n俺たちの魂 眠っちゃいねえ！\n\n邪気はらうための祭 覇気偽るために中止\n神輿もだしも 何百年の 伝統も\n空気一つで 止められたんだ\n\nだけど今日は 違うんだ！\n恐怖の祭りは もう終わり！\nほんとの祭りが いま始まる！\n\nHook\n\n祭りを守れ！\n日本を守れ！\n祭りを守れ！\n邪気を払え！\n祭りを守れ！\n日本を守れ！\n心を守れ！\n町を守れ！\n祭りを守れ！\n日本を守れ！\n祭りを守れ！\n邪気を払え！\n祭りを守れ！\n日本を守れ！\n心を守れ！\n町を守れ！"
+                },
+                {
+                    "track": "19",
+                    "title": "キリンになった僕",
+                    "author": "",
+                    "lyrics": "ある朝目覚めると僕は\nキリンになっていた魔法にかかり\n君と会う日を待ちわびて\nひたすら首を長くして\n\n会いたいと思っても\n今じゃ胸を張れない\n宵闇に溶ける街灯を\n祈りみたいに見上げてる\nあぁ神様 呼びかけるたび\nいつも風が吹くよ\n\nある朝目覚めると僕は\nキリンになっていた魔法にかかり\n君と会う日を待ちわびて\nひたすら首を長くして\n\nI’ll be waiting for you\n( I’ll be waiting for you)\nI’ll be waiting for you\n( I’ll be waiting for you)\nI’ll be waiting for you\n( I’ll be waiting for you)\nI’ll be waiting for you\n( I’ll be waiting for you)\n\n終電を逃した夜\nがっかりするばかりさ\n真っ直ぐ帰るはずなのに\n今日も風に流されてる\n\nあぁ あったコンビニの中に\n塩むすびがひとつ\n\nある朝目覚めると僕は\nキリンになっていた魔法にかかり\n君と会う日を待ちわびて\nひたすら首を長くして"
                 }
             ]
         },
