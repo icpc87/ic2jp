@@ -42,6 +42,11 @@ window.siteListData = [
     "newTab": false
   },
   {
+    "name": "番組INFOデータベース",
+    "url": "https://info.ic2.jp",
+    "newTab": true
+  },
+  {
     "name": "CJ歌詞サイト",
     "url": "https://lyrics.ic2.jp/",
     "newTab": true
