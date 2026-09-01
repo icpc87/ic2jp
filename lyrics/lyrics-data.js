@@ -1192,6 +1192,18 @@ const lyricsData = {
                     "title": "It’s You(ヤクよりもFeel Good)通称",
                     "author": "Marre",
                     "lyrics": "探していたけど見つからないからフラフラしてた\nどこにいけば見つかるかわからずにフラフラしてた\n夜な夜なクラブでドラックやっても満たされなくて\n気づけば裸で公園で叫び捕まえられた\n\nだけど見つけた　だけど出会った\nだけど見つけた　だけど出会った\nだけど本当はいつもみてくれていたと今わかった\n\nIt`s You(You)　探していたのは\nIt`s You(You)　ヤクよりもFeel Good\nIt`s You(You)　探していたのは\nIt`s You(You)　ヤクよりもFeel Good\n\nYou You You You You…"
+                },
+                {
+                    "track": "15",
+                    "title": "You Are My World -JP",
+                    "author": "",
+                    "lyrics": "あなたを何より心から慕うよ　あなたを\n救い主イエスあなたが全て背負ってくれたから\n天使達も拝する　僕らも讃える\n\nあなたが世界だ　\nいのちを捧げる\nあなたの代わりは他に何もない\n\nYou are my World  \nYou are my God And I lay down my life for You\nYou are my Lord  \nthe One I love\nNo one could ever take Your place\n\nあなたが世界だ　\nいのちを捧げる\nあなたの代わりは他に何もない"
+                },
+                {
+                    "track": "16",
+                    "title": "You Are My World",
+                    "author": "",
+                    "lyrics": "My Father, I adore You more \nThan anything my heart could wish for \nI just want You and Jesus, my beloved Savior\n Everything I am, I owe to You, I owe it all to You \n\nAnd angels come and adore You \nAnd we, Your children worship You \n\nYou are my world\n You are my God \nAnd I lay down my life for You \nYou are my Lord \nthe One I love \nNo one could ever take Your place"
                 }
             ]
         }
